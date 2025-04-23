@@ -2,155 +2,71 @@ package handlers
 
 import (
 	"bookstore/db"
-	"net/http"
+	"fmt"
 
-	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
 
-type Server struct {
-	db *gorm.DB
+func CreateBook(database *gorm.DB, title, author string) (*db.Book, error) {
+	var authorRecord db.Author
+	// Ищем автора по имени
+	if err := database.Where("name = ?", author).First(&authorRecord).Error; err != nil {
+		// Ошибка при поиске автора
+		if err == gorm.ErrRecordNotFound {
+			return nil, fmt.Errorf("author not found")
+		}
+		return nil, fmt.Errorf("failed to get author: %v", err)
+	}
+
+	// Создаем книгу с найденным author_id
+	book := db.Book{Title: title, AuthorID: authorRecord.ID}
+	if err := database.Create(&book).Error; err != nil {
+		return nil, fmt.Errorf("failed to create book: %v", err)
+	}
+
+	return &book, nil
 }
 
-func NewServer(db *gorm.DB) *Server {
-	return &Server{
-		db: db,
+func GetAllBooks(database *gorm.DB) (*[]db.Book, error) {
+	var books []db.Book
+	if err := database.Find(&books).Error; err != nil {
+		return nil, fmt.Errorf("failed to get all books: %v", err)
 	}
+
+	return &books, nil
 }
 
-func (s *Server) CreateBook() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		var req struct {
-			Title  string `json:"title"`
-			Author string `json:"author"`
-		}
-
-		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
-		}
-
-		var author db.Author
-		if err := s.db.Where("name=?", req.Author).First(&author).Error; err != nil {
-			if err == gorm.ErrRecordNotFound {
-				c.JSON(http.StatusNotFound, gin.H{"error": "Author not found"})
-				return
-			}
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
-
-		if req.Author == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Author is required"})
-			return
-		}
-
-		book := db.Book{Title: req.Title, AuthorID: author.ID}
-		if err := s.db.Create(&book).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
-
-		c.JSON(http.StatusCreated, gin.H{"book": book})
+func GetBookByName(database *gorm.DB, title string) (*db.Book, error) {
+	var book db.Book
+	if err := database.Where("title = ?", title).First(&book).Error; err != nil {
+		return nil, fmt.Errorf("failed to get book by name: %v", err)
 	}
+
+	return &book, nil
 }
 
-func (s *Server) GetAllBooks() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		books, err := db.GetAllBooks()
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
-
-		c.JSON(http.StatusOK, gin.H{"books": books})
+func GetBookByAuthor(database *gorm.DB, author string) (*[]db.Book, error) {
+	var books []db.Book
+	if err := database.Where("author_id IN (SELECT id FROM authors WHERE name = ?)", author).Find(&books).Error; err != nil {
+		return nil, fmt.Errorf("failed to get book by author: %v", err)
 	}
+
+	return &books, nil
 }
 
-func (s *Server) GetBookByName() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		var req struct {
-			Title string `json:"title"`
-		}
-
-		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
-		}
-
-		book, err := db.GetBookByName(req.Title)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
-
-		c.JSON(http.StatusOK, gin.H{"book": book})
+func DeleteBook(database *gorm.DB, title string) error {
+	if err := database.Where("title = ?", title).Delete(&db.Book{}).Error; err != nil {
+		return fmt.Errorf("failed to delete book: %v", err)
 	}
+
+	return nil
 }
 
-func (s *Server) GetBookByAuthor() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		var req struct {
-			Author string `json:"author"`
-		}
-
-		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
-		}
-
-		books, err := db.GetBookByAuthor(req.Author)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
-
-		c.JSON(http.StatusOK, gin.H{"books": books})
+func CreateAuthor(database *gorm.DB, name string) (*db.Author, error) {
+	author := db.Author{Name: name}
+	if err := database.Create(&author).Error; err != nil {
+		return nil, fmt.Errorf("failed to create author: %v", err)
 	}
-}
 
-func (s *Server) DeleteBook() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		var req struct {
-			Title string `json:"title"`
-		}
-
-		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
-		}
-
-		if req.Title == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "name is required"})
-			return
-		}
-
-		if err := db.DeleteBook(req.Title); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
-
-		c.JSON(http.StatusOK, gin.H{"message": "book deleted successfully"})
-	}
-}
-
-func (s *Server) CreateAuthor() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		var req struct {
-			Name string `json:"name"`
-		}
-
-		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
-		}
-
-		author := db.Author{Name: req.Name}
-		if err := s.db.Create(&author).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
-
-		c.JSON(http.StatusCreated, gin.H{"author": author})
-	}
+	return &author, nil
 }
