@@ -31,35 +31,29 @@ func main() {
 	myWindow := myApp.NewWindow("Bookstore")
 	myWindow.Resize(fyne.NewSize(600, 500))
 
-	// Создаем вкладки для разделения функциональности
 	tabs := container.NewAppTabs(
 		container.NewTabItem("Управление книгами", createBooksTab(myWindow, db)),
 		container.NewTabItem("Управление авторами", createAuthorsTab(myWindow, db)),
 		container.NewTabItem("Поиск", createSearchTab(myWindow, db)),
 	)
 
-	// Устанавливаем расположение вкладок вверху окна
 	tabs.SetTabLocation(container.TabLocationTop)
 
 	myWindow.SetContent(tabs)
 	myWindow.ShowAndRun()
 }
 
-// Функция создания вкладки управления книгами
 func createBooksTab(window fyne.Window, db *gorm.DB) fyne.CanvasObject {
-	// Заголовок
 	heading := canvas.NewText("Управление книгами", theme.PrimaryColor())
 	heading.TextSize = 24
 	heading.Alignment = fyne.TextAlignCenter
 
-	// Элементы ввода с подсказками
 	titleEntry := widget.NewEntry()
 	titleEntry.SetPlaceHolder("Введите название книги")
 
 	authorEntry := widget.NewEntry()
 	authorEntry.SetPlaceHolder("Введите автора книги")
 
-	// Карточка для создания книги
 	createCard := widget.NewCard("Добавить новую книгу", "", nil)
 	createContent := container.NewVBox(
 		widget.NewLabel("Название:"),
@@ -88,7 +82,6 @@ func createBooksTab(window fyne.Window, db *gorm.DB) fyne.CanvasObject {
 	)
 	createCard.SetContent(createContent)
 
-	// Карточка для удаления книги
 	titleForDeleteBookEntry := widget.NewEntry()
 	titleForDeleteBookEntry.SetPlaceHolder("Введите название книги для удаления")
 
@@ -127,15 +120,13 @@ func createBooksTab(window fyne.Window, db *gorm.DB) fyne.CanvasObject {
 	)
 	deleteCard.SetContent(deleteContent)
 
-	// Карточка для просмотра всех книг
 	viewAllBooksCard := widget.NewCard("Просмотр всех книг", "", nil)
 	booksList := widget.NewList(
-		func() int { return 0 }, // Заглушка, обновляется при нажатии кнопки
+		func() int { return 0 },
 		func() fyne.CanvasObject {
 			return widget.NewLabel("Заголовок книги - Автор")
 		},
 		func(id widget.ListItemID, obj fyne.CanvasObject) {
-			// Заглушка, обновляется при нажатии кнопки
 		},
 	)
 
@@ -182,18 +173,14 @@ func createBooksTab(window fyne.Window, db *gorm.DB) fyne.CanvasObject {
 	)
 }
 
-// Функция создания вкладки управления авторами
 func createAuthorsTab(window fyne.Window, db *gorm.DB) fyne.CanvasObject {
-	// Заголовок
 	heading := canvas.NewText("Управление авторами", theme.PrimaryColor())
 	heading.TextSize = 24
 	heading.Alignment = fyne.TextAlignCenter
 
-	// Элементы ввода с подсказками
 	nameEntry := widget.NewEntry()
 	nameEntry.SetPlaceHolder("Введите имя автора")
 
-	// Карточка для создания автора
 	createAuthorCard := widget.NewCard("Добавить нового автора", "", nil)
 	createAuthorContent := container.NewVBox(
 		widget.NewLabel("Имя автора:"),
@@ -219,38 +206,31 @@ func createAuthorsTab(window fyne.Window, db *gorm.DB) fyne.CanvasObject {
 	)
 	createAuthorCard.SetContent(createAuthorContent)
 
-	// Компоновка вкладки
 	return container.NewVBox(
 		heading,
 		container.NewPadded(createAuthorCard),
 	)
 }
 
-// Функция создания вкладки поиска
 func createSearchTab(window fyne.Window, db *gorm.DB) fyne.CanvasObject {
-	// Заголовок
 	heading := canvas.NewText("Поиск книг", theme.PrimaryColor())
 	heading.TextSize = 24
 	heading.Alignment = fyne.TextAlignCenter
 
-	// Элементы для поиска по названию
 	titleSearchEntry := widget.NewEntry()
 	titleSearchEntry.SetPlaceHolder("Введите название книги")
 
-	// Элементы для поиска по автору
 	authorSearchEntry := widget.NewEntry()
 	authorSearchEntry.SetPlaceHolder("Введите имя автора")
 
-	// Карточка для результатов поиска
 	resultsCard := widget.NewCard("Результаты поиска", "", nil)
 
 	resultsList := widget.NewList(
-		func() int { return 0 }, // Заглушка, обновляется при поиске
+		func() int { return 0 },
 		func() fyne.CanvasObject {
 			return widget.NewLabel("Заголовок книги - Автор")
 		},
 		func(id widget.ListItemID, obj fyne.CanvasObject) {
-			// Заглушка, обновляется при поиске
 		},
 	)
 
@@ -263,7 +243,6 @@ func createSearchTab(window fyne.Window, db *gorm.DB) fyne.CanvasObject {
 	)
 	resultsCard.SetContent(resultsContent)
 
-	// Функция обновления результатов поиска
 	updateSearchResults := func(books []interface{}) {
 		resultsList.Length = func() int { return len(books) }
 		resultsList.UpdateItem = func(id widget.ListItemID, obj fyne.CanvasObject) {
@@ -274,7 +253,6 @@ func createSearchTab(window fyne.Window, db *gorm.DB) fyne.CanvasObject {
 		resultsList.Refresh()
 	}
 
-	// Карточка для поиска по названию
 	searchByTitleCard := widget.NewCard("Поиск по названию", "", nil)
 	searchByTitleContent := container.NewVBox(
 		titleSearchEntry,
@@ -292,13 +270,11 @@ func createSearchTab(window fyne.Window, db *gorm.DB) fyne.CanvasObject {
 					return
 				}
 
-				// Разыменование указателя перед использованием len()
 				if len(*books) == 0 {
 					dialog.ShowInformation("Результаты поиска", "Книги не найдены", window)
 					return
 				}
 
-				// И далее в коде тоже нужно разыменование
 				var bookList []interface{}
 				for _, book := range *books {
 					bookMap := map[string]interface{}{
@@ -314,7 +290,6 @@ func createSearchTab(window fyne.Window, db *gorm.DB) fyne.CanvasObject {
 	)
 	searchByTitleCard.SetContent(searchByTitleContent)
 
-	// Карточка для поиска по автору
 	searchByAuthorCard := widget.NewCard("Поиск по автору", "", nil)
 	searchByAuthorContent := container.NewVBox(
 		authorSearchEntry,
@@ -337,7 +312,6 @@ func createSearchTab(window fyne.Window, db *gorm.DB) fyne.CanvasObject {
 					return
 				}
 
-				// Преобразуем книги в формат для отображения
 				var bookList []interface{}
 				for _, book := range *books {
 					bookMap := map[string]interface{}{
@@ -353,7 +327,6 @@ func createSearchTab(window fyne.Window, db *gorm.DB) fyne.CanvasObject {
 	)
 	searchByAuthorCard.SetContent(searchByAuthorContent)
 
-	// Компоновка вкладки
 	return container.NewVBox(
 		heading,
 		container.NewPadded(
