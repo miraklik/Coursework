@@ -9,9 +9,7 @@ import (
 
 func CreateBook(database *gorm.DB, title, author string) (*db.Book, error) {
 	var authorRecord db.Author
-	// Ищем автора по имени
 	if err := database.Where("name = ?", author).First(&authorRecord).Error; err != nil {
-		// Ошибка при поиске автора
 		if err == gorm.ErrRecordNotFound {
 			return nil, fmt.Errorf("author not found")
 		}

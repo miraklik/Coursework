@@ -12,4 +12,4 @@ CREATE TABLE authors (
     name VARCHAR(100) NOT NULL
 );
 
-CREATE INDEX idx_authors_name ON authors(name);
+CREATE INDEX idx_authors_name ON authors(name); 

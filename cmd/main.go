@@ -3,10 +3,16 @@ package main
 import (
 	"bookstore/db"
 	"bookstore/handlers"
+	"fmt"
 	"log"
 
+	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
+	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/dialog"
+	"fyne.io/fyne/v2/layout"
+	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"gorm.io/gorm"
 )
@@ -23,106 +29,341 @@ func main() {
 
 	myApp := app.New()
 	myWindow := myApp.NewWindow("Bookstore")
+	myWindow.Resize(fyne.NewSize(600, 500))
 
-	titleEntry := widget.NewEntry()
-	authorEntry := widget.NewEntry()
-	nameEntry := widget.NewEntry()
-	titleBookEntry := widget.NewEntry()
-	authorNameEntry := widget.NewEntry()
-	titleForDeleteBookEntry := widget.NewEntry()
-
-	createBookButton := widget.NewButton("Create Book", func() {
-		title := titleEntry.Text
-		author := authorEntry.Text
-
-		book, err := handlers.CreateBook(db, title, author)
-		if err != nil {
-			log.Printf("Failed to create book: %v", err)
-			return
-		} else {
-			log.Printf("Book created: %v", book)
-		}
-	})
-
-	createGetAllBookButton := widget.NewButton("Get All Books", func() {
-		books, err := handlers.GetAllBooks(db)
-		if err != nil {
-			log.Printf("Failed to get all books: %v", err)
-			return
-		} else {
-			log.Printf("All books: %v", books)
-		}
-	})
-
-	createGetBookByNameButton := widget.NewButton("Get Book By Name", func() {
-		title := titleBookEntry.Text
-
-		books, err := handlers.GetBookByName(db, title)
-		if err != nil {
-			log.Printf("Failed to get book by name: %v", err)
-			return
-		} else {
-			log.Printf("Books by name: %v", books)
-		}
-	})
-
-	createGetBookByAuthorButton := widget.NewButton("Get Book By Author", func() {
-		authorName := authorNameEntry.Text
-
-		books, err := handlers.GetBookByAuthor(db, authorName)
-		if err != nil {
-			log.Printf("Failed to get book by author: %v", err)
-			return
-		} else {
-			log.Printf("Books by author: %v", books)
-		}
-	})
-
-	createDeleteBookButton := widget.NewButton("Delete Book", func() {
-		title := titleForDeleteBookEntry.Text
-
-		err := handlers.DeleteBook(db, title)
-		if err != nil {
-			log.Printf("Failed to delete book: %v", err)
-			return
-		} else {
-			log.Println("Book deleted")
-		}
-	})
-
-	createAuthorButton := widget.NewButton("Create Author", func() {
-		name := nameEntry.Text
-
-		author, err := handlers.CreateAuthor(db, name)
-		if err != nil {
-			log.Printf("Failed to create author: %v", err)
-			return
-		} else {
-			log.Printf("Author created: %v", author)
-		}
-	})
-
-	form := container.NewVBox(
-		widget.NewLabel("Create Book:"),
-		titleEntry,
-		authorEntry,
-		createBookButton,
-		widget.NewLabel("Create Author:"),
-		nameEntry,
-		createAuthorButton,
-		widget.NewLabel("Get All Books:"),
-		createGetAllBookButton,
-		widget.NewLabel("Get Book By Name:"),
-		titleBookEntry,
-		createGetBookByNameButton,
-		widget.NewLabel("Get Book By Author:"),
-		authorNameEntry,
-		createGetBookByAuthorButton,
-		widget.NewLabel("Delete Book:"),
-		titleForDeleteBookEntry,
-		createDeleteBookButton,
+	// Создаем вкладки для разделения функциональности
+	tabs := container.NewAppTabs(
+		container.NewTabItem("Управление книгами", createBooksTab(myWindow, db)),
+		container.NewTabItem("Управление авторами", createAuthorsTab(myWindow, db)),
+		container.NewTabItem("Поиск", createSearchTab(myWindow, db)),
 	)
 
-	myWindow.SetContent(form)
+	// Устанавливаем расположение вкладок вверху окна
+	tabs.SetTabLocation(container.TabLocationTop)
+
+	myWindow.SetContent(tabs)
 	myWindow.ShowAndRun()
+}
+
+// Функция создания вкладки управления книгами
+func createBooksTab(window fyne.Window, db *gorm.DB) fyne.CanvasObject {
+	// Заголовок
+	heading := canvas.NewText("Управление книгами", theme.PrimaryColor())
+	heading.TextSize = 24
+	heading.Alignment = fyne.TextAlignCenter
+
+	// Элементы ввода с подсказками
+	titleEntry := widget.NewEntry()
+	titleEntry.SetPlaceHolder("Введите название книги")
+
+	authorEntry := widget.NewEntry()
+	authorEntry.SetPlaceHolder("Введите автора книги")
+
+	// Карточка для создания книги
+	createCard := widget.NewCard("Добавить новую книгу", "", nil)
+	createContent := container.NewVBox(
+		widget.NewLabel("Название:"),
+		titleEntry,
+		widget.NewLabel("Автор:"),
+		authorEntry,
+		container.NewHBox(
+			layout.NewSpacer(),
+			widget.NewButtonWithIcon("Создать", theme.ContentAddIcon(), func() {
+				if titleEntry.Text == "" || authorEntry.Text == "" {
+					dialog.ShowError(fmt.Errorf("Необходимо заполнить все поля"), window)
+					return
+				}
+
+				book, err := handlers.CreateBook(db, titleEntry.Text, authorEntry.Text)
+				if err != nil {
+					dialog.ShowError(fmt.Errorf("Ошибка при создании книги: %v", err), window)
+					return
+				}
+
+				dialog.ShowInformation("Успешно", fmt.Sprintf("Книга '%s' успешно добавлена", book.Title), window)
+				titleEntry.SetText("")
+				authorEntry.SetText("")
+			}),
+		),
+	)
+	createCard.SetContent(createContent)
+
+	// Карточка для удаления книги
+	titleForDeleteBookEntry := widget.NewEntry()
+	titleForDeleteBookEntry.SetPlaceHolder("Введите название книги для удаления")
+
+	deleteCard := widget.NewCard("Удалить книгу", "", nil)
+	deleteContent := container.NewVBox(
+		widget.NewLabel("Название книги:"),
+		titleForDeleteBookEntry,
+		container.NewHBox(
+			layout.NewSpacer(),
+			widget.NewButtonWithIcon("Удалить", theme.DeleteIcon(), func() {
+				if titleForDeleteBookEntry.Text == "" {
+					dialog.ShowError(fmt.Errorf("Введите название книги"), window)
+					return
+				}
+
+				confirmDialog := dialog.NewConfirm(
+					"Подтверждение удаления",
+					fmt.Sprintf("Вы уверены, что хотите удалить книгу '%s'?", titleForDeleteBookEntry.Text),
+					func(ok bool) {
+						if ok {
+							err := handlers.DeleteBook(db, titleForDeleteBookEntry.Text)
+							if err != nil {
+								dialog.ShowError(fmt.Errorf("Ошибка при удалении книги: %v", err), window)
+								return
+							}
+
+							dialog.ShowInformation("Успешно", "Книга успешно удалена", window)
+							titleForDeleteBookEntry.SetText("")
+						}
+					},
+					window,
+				)
+				confirmDialog.Show()
+			}),
+		),
+	)
+	deleteCard.SetContent(deleteContent)
+
+	// Карточка для просмотра всех книг
+	viewAllBooksCard := widget.NewCard("Просмотр всех книг", "", nil)
+	booksList := widget.NewList(
+		func() int { return 0 }, // Заглушка, обновляется при нажатии кнопки
+		func() fyne.CanvasObject {
+			return widget.NewLabel("Заголовок книги - Автор")
+		},
+		func(id widget.ListItemID, obj fyne.CanvasObject) {
+			// Заглушка, обновляется при нажатии кнопки
+		},
+	)
+
+	scrollContainer := container.NewVScroll(booksList)
+	scrollContainer.SetMinSize(fyne.NewSize(400, 200))
+
+	viewAllBooksContent := container.NewVBox(
+		container.NewHBox(
+			layout.NewSpacer(),
+			widget.NewButtonWithIcon("Загрузить все книги", theme.ViewRefreshIcon(), func() {
+				books, err := handlers.GetAllBooks(db)
+				if err != nil {
+					dialog.ShowError(fmt.Errorf("Ошибка при получении книг: %v", err), window)
+					return
+				}
+
+				localBooks := *books
+
+				booksList.Length = func() int { return len(*books) }
+				booksList.UpdateItem = func(id widget.ListItemID, obj fyne.CanvasObject) {
+					label := obj.(*widget.Label)
+					label.SetText(fmt.Sprintf("%s - %s", localBooks[id].Title, localBooks[id].Author))
+				}
+				booksList.Refresh()
+			}),
+			layout.NewSpacer(),
+		),
+		scrollContainer,
+	)
+	viewAllBooksCard.SetContent(viewAllBooksContent)
+
+	// Компоновка вкладки
+	return container.NewVBox(
+		heading,
+		container.NewPadded(
+			container.NewVBox(
+				createCard,
+				widget.NewSeparator(),
+				deleteCard,
+				widget.NewSeparator(),
+				viewAllBooksCard,
+			),
+		),
+	)
+}
+
+// Функция создания вкладки управления авторами
+func createAuthorsTab(window fyne.Window, db *gorm.DB) fyne.CanvasObject {
+	// Заголовок
+	heading := canvas.NewText("Управление авторами", theme.PrimaryColor())
+	heading.TextSize = 24
+	heading.Alignment = fyne.TextAlignCenter
+
+	// Элементы ввода с подсказками
+	nameEntry := widget.NewEntry()
+	nameEntry.SetPlaceHolder("Введите имя автора")
+
+	// Карточка для создания автора
+	createAuthorCard := widget.NewCard("Добавить нового автора", "", nil)
+	createAuthorContent := container.NewVBox(
+		widget.NewLabel("Имя автора:"),
+		nameEntry,
+		container.NewHBox(
+			layout.NewSpacer(),
+			widget.NewButtonWithIcon("Создать", theme.ContentAddIcon(), func() {
+				if nameEntry.Text == "" {
+					dialog.ShowError(fmt.Errorf("Введите имя автора"), window)
+					return
+				}
+
+				author, err := handlers.CreateAuthor(db, nameEntry.Text)
+				if err != nil {
+					dialog.ShowError(fmt.Errorf("Ошибка при создании автора: %v", err), window)
+					return
+				}
+
+				dialog.ShowInformation("Успешно", fmt.Sprintf("Автор '%s' успешно добавлен", author.Name), window)
+				nameEntry.SetText("")
+			}),
+		),
+	)
+	createAuthorCard.SetContent(createAuthorContent)
+
+	// Компоновка вкладки
+	return container.NewVBox(
+		heading,
+		container.NewPadded(createAuthorCard),
+	)
+}
+
+// Функция создания вкладки поиска
+func createSearchTab(window fyne.Window, db *gorm.DB) fyne.CanvasObject {
+	// Заголовок
+	heading := canvas.NewText("Поиск книг", theme.PrimaryColor())
+	heading.TextSize = 24
+	heading.Alignment = fyne.TextAlignCenter
+
+	// Элементы для поиска по названию
+	titleSearchEntry := widget.NewEntry()
+	titleSearchEntry.SetPlaceHolder("Введите название книги")
+
+	// Элементы для поиска по автору
+	authorSearchEntry := widget.NewEntry()
+	authorSearchEntry.SetPlaceHolder("Введите имя автора")
+
+	// Карточка для результатов поиска
+	resultsCard := widget.NewCard("Результаты поиска", "", nil)
+
+	resultsList := widget.NewList(
+		func() int { return 0 }, // Заглушка, обновляется при поиске
+		func() fyne.CanvasObject {
+			return widget.NewLabel("Заголовок книги - Автор")
+		},
+		func(id widget.ListItemID, obj fyne.CanvasObject) {
+			// Заглушка, обновляется при поиске
+		},
+	)
+
+	scrollContainer := container.NewVScroll(resultsList)
+	scrollContainer.SetMinSize(fyne.NewSize(400, 200))
+
+	resultsContent := container.NewVBox(
+		widget.NewLabel("Найденные книги:"),
+		scrollContainer,
+	)
+	resultsCard.SetContent(resultsContent)
+
+	// Функция обновления результатов поиска
+	updateSearchResults := func(books []interface{}) {
+		resultsList.Length = func() int { return len(books) }
+		resultsList.UpdateItem = func(id widget.ListItemID, obj fyne.CanvasObject) {
+			label := obj.(*widget.Label)
+			book := books[id].(map[string]interface{})
+			label.SetText(fmt.Sprintf("%v - %v", book["Title"], book["Author"]))
+		}
+		resultsList.Refresh()
+	}
+
+	// Карточка для поиска по названию
+	searchByTitleCard := widget.NewCard("Поиск по названию", "", nil)
+	searchByTitleContent := container.NewVBox(
+		titleSearchEntry,
+		container.NewHBox(
+			layout.NewSpacer(),
+			widget.NewButtonWithIcon("Найти", theme.SearchIcon(), func() {
+				if titleSearchEntry.Text == "" {
+					dialog.ShowError(fmt.Errorf("Введите название книги"), window)
+					return
+				}
+
+				books, err := handlers.GetBookByAuthor(db, authorSearchEntry.Text)
+				if err != nil {
+					dialog.ShowError(fmt.Errorf("Ошибка при поиске книг: %v", err), window)
+					return
+				}
+
+				// Разыменование указателя перед использованием len()
+				if len(*books) == 0 {
+					dialog.ShowInformation("Результаты поиска", "Книги не найдены", window)
+					return
+				}
+
+				// И далее в коде тоже нужно разыменование
+				var bookList []interface{}
+				for _, book := range *books {
+					bookMap := map[string]interface{}{
+						"Title":  book.Title,
+						"Author": book.Author,
+					}
+					bookList = append(bookList, bookMap)
+				}
+
+				updateSearchResults(bookList)
+			}),
+		),
+	)
+	searchByTitleCard.SetContent(searchByTitleContent)
+
+	// Карточка для поиска по автору
+	searchByAuthorCard := widget.NewCard("Поиск по автору", "", nil)
+	searchByAuthorContent := container.NewVBox(
+		authorSearchEntry,
+		container.NewHBox(
+			layout.NewSpacer(),
+			widget.NewButtonWithIcon("Найти", theme.SearchIcon(), func() {
+				if authorSearchEntry.Text == "" {
+					dialog.ShowError(fmt.Errorf("Введите имя автора"), window)
+					return
+				}
+
+				books, err := handlers.GetBookByAuthor(db, authorSearchEntry.Text)
+				if err != nil {
+					dialog.ShowError(fmt.Errorf("Ошибка при поиске книг: %v", err), window)
+					return
+				}
+
+				if len(*books) == 0 {
+					dialog.ShowInformation("Результаты поиска", "Книги не найдены", window)
+					return
+				}
+
+				// Преобразуем книги в формат для отображения
+				var bookList []interface{}
+				for _, book := range *books {
+					bookMap := map[string]interface{}{
+						"Title":  book.Title,
+						"Author": book.Author,
+					}
+					bookList = append(bookList, bookMap)
+				}
+
+				updateSearchResults(bookList)
+			}),
+		),
+	)
+	searchByAuthorCard.SetContent(searchByAuthorContent)
+
+	// Компоновка вкладки
+	return container.NewVBox(
+		heading,
+		container.NewPadded(
+			container.NewVBox(
+				container.NewHSplit(
+					searchByTitleCard,
+					searchByAuthorCard,
+				),
+				resultsCard,
+			),
+		),
+	)
 }
