@@ -7,64 +7,81 @@ import (
 	"gorm.io/gorm"
 )
 
-func CreateBook(database *gorm.DB, title, author string) (*db.Book, error) {
-	var authorRecord db.Author
-	if err := database.Where("name = ?", author).First(&authorRecord).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			return nil, fmt.Errorf("author not found")
-		}
-		return nil, fmt.Errorf("failed to get author: %v", err)
-	}
-
-	// Создаем книгу с найденным author_id
-	book := db.Book{Title: title, AuthorID: authorRecord.ID}
-	if err := database.Create(&book).Error; err != nil {
+func CreateStudents(database *gorm.DB, full_name, group_name string) (*db.Students, error) {
+	student := db.Students{Full_name: full_name, Group_name: group_name}
+	if err := database.Create(&student).Error; err != nil {
 		return nil, fmt.Errorf("failed to create book: %v", err)
 	}
 
-	return &book, nil
+	return &student, nil
 }
 
-func GetAllBooks(database *gorm.DB) (*[]db.Book, error) {
-	var books []db.Book
-	if err := database.Find(&books).Error; err != nil {
-		return nil, fmt.Errorf("failed to get all books: %v", err)
+func CreateOrganization(database *gorm.DB, name, address string) (*db.Organizations, error) {
+	organizations := db.Organizations{Name: name, Address: address}
+	if err := database.Create(&organizations).Error; err != nil {
+		return nil, fmt.Errorf("failed to create book")
 	}
 
-	return &books, nil
+	return &organizations, nil
 }
 
-func GetBookByName(database *gorm.DB, title string) (*db.Book, error) {
-	var book db.Book
-	if err := database.Where("title = ?", title).First(&book).Error; err != nil {
-		return nil, fmt.Errorf("failed to get book by name: %v", err)
+func GetAllStudents(database *gorm.DB) (*[]db.Students, error) {
+	students, err := db.GetAllStudents(database)
+	if err != nil {
+		return nil, fmt.Errorf("")
 	}
 
-	return &book, nil
+	return &students, nil
 }
 
-func GetBookByAuthor(database *gorm.DB, author string) (*[]db.Book, error) {
-	var books []db.Book
-	if err := database.Where("author_id IN (SELECT id FROM authors WHERE name = ?)", author).Find(&books).Error; err != nil {
-		return nil, fmt.Errorf("failed to get book by author: %v", err)
+func GetStudentByName(database *gorm.DB, full_name string) (*[]db.Students, error) {
+	students, err := db.GetStudentByName(database, full_name)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get student by name")
 	}
 
-	return &books, nil
+	return &students, nil
 }
 
-func DeleteBook(database *gorm.DB, title string) error {
-	if err := database.Where("title = ?", title).Delete(&db.Book{}).Error; err != nil {
-		return fmt.Errorf("failed to delete book: %v", err)
+func DeleteStudens(database *gorm.DB, full_name string) error {
+	if err := db.DeleteStudens(database, full_name); err != nil {
+		return fmt.Errorf("failed to delete students: %v", err)
 	}
 
 	return nil
 }
 
-func CreateAuthor(database *gorm.DB, name string) (*db.Author, error) {
-	author := db.Author{Name: name}
-	if err := database.Create(&author).Error; err != nil {
-		return nil, fmt.Errorf("failed to create author: %v", err)
+func GetAllOrganizations(database *gorm.DB) (*[]db.Organizations, error) {
+	organizations, err := db.GetAllOrganizations(database)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get all organizations: %v", err)
 	}
 
-	return &author, nil
+	return &organizations, nil
+}
+
+func DeleteOrganization(database *gorm.DB, name string) error {
+	if err := db.DeleteOrganization(database, name); err != nil {
+		return fmt.Errorf("failed to delete organization: %v", err)
+	}
+
+	return nil
+}
+
+func GetOrganizationsByName(database *gorm.DB, name string) (*[]db.Organizations, error) {
+	organization, err := db.GetOrganizationsByName(database, name)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get organozations by name: %v", err)
+	}
+
+	return &organization, nil
+}
+
+func GetOrganizationsByAddress(database *gorm.DB, address string) (*[]db.Organizations, error) {
+	organization, err := db.GetOrganizationsByAddress(database, address)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get organozations by address: %v", err)
+	}
+
+	return &organization, nil
 }

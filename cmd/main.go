@@ -32,8 +32,8 @@ func main() {
 	myWindow.Resize(fyne.NewSize(600, 500))
 
 	tabs := container.NewAppTabs(
-		container.NewTabItem("Управление книгами", createBooksTab(myWindow, db)),
-		container.NewTabItem("Управление авторами", createAuthorsTab(myWindow, db)),
+		container.NewTabItem("Управление студентами", createStudentsTab(myWindow, db)),
+		container.NewTabItem("Управление организациями", createOrganizationTab(myWindow, db)),
 		container.NewTabItem("Поиск", createSearchTab(myWindow, db)),
 	)
 
@@ -43,73 +43,73 @@ func main() {
 	myWindow.ShowAndRun()
 }
 
-func createBooksTab(window fyne.Window, db *gorm.DB) fyne.CanvasObject {
-	heading := canvas.NewText("Управление книгами", theme.PrimaryColor())
+func createStudentsTab(window fyne.Window, db *gorm.DB) fyne.CanvasObject {
+	heading := canvas.NewText("Управление Студентами", theme.PrimaryColor())
 	heading.TextSize = 24
 	heading.Alignment = fyne.TextAlignCenter
 
-	titleEntry := widget.NewEntry()
-	titleEntry.SetPlaceHolder("Введите название книги")
+	NameEntry := widget.NewEntry()
+	NameEntry.SetPlaceHolder("Введите имя студента")
 
-	authorEntry := widget.NewEntry()
-	authorEntry.SetPlaceHolder("Введите автора книги")
+	GroupEntry := widget.NewEntry()
+	GroupEntry.SetPlaceHolder("Введите название группы")
 
-	createCard := widget.NewCard("Добавить новую книгу", "", nil)
+	createCard := widget.NewCard("Добавить нового студента", "", nil)
 	createContent := container.NewVBox(
-		widget.NewLabel("Название:"),
-		titleEntry,
-		widget.NewLabel("Автор:"),
-		authorEntry,
+		widget.NewLabel("Имя:"),
+		NameEntry,
+		widget.NewLabel("Группа:"),
+		GroupEntry,
 		container.NewHBox(
 			layout.NewSpacer(),
 			widget.NewButtonWithIcon("Создать", theme.ContentAddIcon(), func() {
-				if titleEntry.Text == "" || authorEntry.Text == "" {
-					dialog.ShowError(fmt.Errorf("Необходимо заполнить все поля"), window)
+				if NameEntry.Text == "" || GroupEntry.Text == "" {
+					dialog.ShowError(fmt.Errorf("необходимо заполнить все поля"), window)
 					return
 				}
 
-				book, err := handlers.CreateBook(db, titleEntry.Text, authorEntry.Text)
+				student, err := handlers.CreateStudents(db, NameEntry.Text, GroupEntry.Text)
 				if err != nil {
-					dialog.ShowError(fmt.Errorf("Ошибка при создании книги: %v", err), window)
+					dialog.ShowError(fmt.Errorf("ошибка при добавлении студента: %v", err), window)
 					return
 				}
 
-				dialog.ShowInformation("Успешно", fmt.Sprintf("Книга '%s' успешно добавлена", book.Title), window)
-				titleEntry.SetText("")
-				authorEntry.SetText("")
+				dialog.ShowInformation("Успешно", fmt.Sprintf("Студент '%s' успешно добавлен", student.Full_name), window)
+				NameEntry.SetText("")
+				GroupEntry.SetText("")
 			}),
 		),
 	)
 	createCard.SetContent(createContent)
 
-	titleForDeleteBookEntry := widget.NewEntry()
-	titleForDeleteBookEntry.SetPlaceHolder("Введите название книги для удаления")
+	NameForDeleteBookEntry := widget.NewEntry()
+	NameForDeleteBookEntry.SetPlaceHolder("Введите имя студента для удаления")
 
-	deleteCard := widget.NewCard("Удалить книгу", "", nil)
+	deleteCard := widget.NewCard("Удалить Студента", "", nil)
 	deleteContent := container.NewVBox(
-		widget.NewLabel("Название книги:"),
-		titleForDeleteBookEntry,
+		widget.NewLabel("Имя Студента:"),
+		NameForDeleteBookEntry,
 		container.NewHBox(
 			layout.NewSpacer(),
 			widget.NewButtonWithIcon("Удалить", theme.DeleteIcon(), func() {
-				if titleForDeleteBookEntry.Text == "" {
-					dialog.ShowError(fmt.Errorf("Введите название книги"), window)
+				if NameForDeleteBookEntry.Text == "" {
+					dialog.ShowError(fmt.Errorf("введите имя студента"), window)
 					return
 				}
 
 				confirmDialog := dialog.NewConfirm(
 					"Подтверждение удаления",
-					fmt.Sprintf("Вы уверены, что хотите удалить книгу '%s'?", titleForDeleteBookEntry.Text),
+					fmt.Sprintf("Вы уверены, что хотите удалить студента '%s'?", NameForDeleteBookEntry.Text),
 					func(ok bool) {
 						if ok {
-							err := handlers.DeleteBook(db, titleForDeleteBookEntry.Text)
+							err := handlers.DeleteStudens(db, NameForDeleteBookEntry.Text)
 							if err != nil {
-								dialog.ShowError(fmt.Errorf("Ошибка при удалении книги: %v", err), window)
+								dialog.ShowError(fmt.Errorf("ошибка при удалении студента: %v", err), window)
 								return
 							}
 
-							dialog.ShowInformation("Успешно", "Книга успешно удалена", window)
-							titleForDeleteBookEntry.SetText("")
+							dialog.ShowInformation("Успешно", "Студент успешно удален", window)
+							NameForDeleteBookEntry.SetText("")
 						}
 					},
 					window,
@@ -120,11 +120,11 @@ func createBooksTab(window fyne.Window, db *gorm.DB) fyne.CanvasObject {
 	)
 	deleteCard.SetContent(deleteContent)
 
-	viewAllBooksCard := widget.NewCard("Просмотр всех книг", "", nil)
+	viewAllBooksCard := widget.NewCard("Просмотр всех студентов", "", nil)
 	booksList := widget.NewList(
 		func() int { return 0 },
 		func() fyne.CanvasObject {
-			return widget.NewLabel("Заголовок книги - Автор")
+			return widget.NewLabel("Имя студента - Группа")
 		},
 		func(id widget.ListItemID, obj fyne.CanvasObject) {
 		},
@@ -136,19 +136,19 @@ func createBooksTab(window fyne.Window, db *gorm.DB) fyne.CanvasObject {
 	viewAllBooksContent := container.NewVBox(
 		container.NewHBox(
 			layout.NewSpacer(),
-			widget.NewButtonWithIcon("Загрузить все книги", theme.ViewRefreshIcon(), func() {
-				books, err := handlers.GetAllBooks(db)
+			widget.NewButtonWithIcon("Загрузить всех студентов", theme.ViewRefreshIcon(), func() {
+				students, err := handlers.GetAllStudents(db)
 				if err != nil {
-					dialog.ShowError(fmt.Errorf("Ошибка при получении книг: %v", err), window)
+					dialog.ShowError(fmt.Errorf("ошибка при получении студентов: %v", err), window)
 					return
 				}
 
-				localBooks := *books
+				localStudents := *students
 
-				booksList.Length = func() int { return len(*books) }
+				booksList.Length = func() int { return len(*students) }
 				booksList.UpdateItem = func(id widget.ListItemID, obj fyne.CanvasObject) {
 					label := obj.(*widget.Label)
-					label.SetText(fmt.Sprintf("%s - %s", localBooks[id].Title, localBooks[id].Author))
+					label.SetText(fmt.Sprintf("%s - %s", localStudents[id].Full_name, localStudents[id].Group_name))
 				}
 				booksList.Refresh()
 			}),
@@ -158,7 +158,6 @@ func createBooksTab(window fyne.Window, db *gorm.DB) fyne.CanvasObject {
 	)
 	viewAllBooksCard.SetContent(viewAllBooksContent)
 
-	// Компоновка вкладки
 	return container.NewVBox(
 		heading,
 		container.NewPadded(
@@ -173,62 +172,152 @@ func createBooksTab(window fyne.Window, db *gorm.DB) fyne.CanvasObject {
 	)
 }
 
-func createAuthorsTab(window fyne.Window, db *gorm.DB) fyne.CanvasObject {
-	heading := canvas.NewText("Управление авторами", theme.PrimaryColor())
+func createOrganizationTab(window fyne.Window, db *gorm.DB) fyne.CanvasObject {
+	heading := canvas.NewText("Управление организациями", theme.PrimaryColor())
 	heading.TextSize = 24
 	heading.Alignment = fyne.TextAlignCenter
 
 	nameEntry := widget.NewEntry()
-	nameEntry.SetPlaceHolder("Введите имя автора")
+	nameEntry.SetPlaceHolder("Введите название организации")
 
-	createAuthorCard := widget.NewCard("Добавить нового автора", "", nil)
-	createAuthorContent := container.NewVBox(
-		widget.NewLabel("Имя автора:"),
+	addressEntry := widget.NewEntry()
+	addressEntry.SetPlaceHolder("Введите адрес организации")
+
+	createCard := widget.NewCard("Добавить новую организацию", "", nil)
+	createContent := container.NewVBox(
+		widget.NewLabel("Название организации:"),
 		nameEntry,
+		widget.NewLabel("Адрес организации:"),
+		addressEntry,
 		container.NewHBox(
 			layout.NewSpacer(),
 			widget.NewButtonWithIcon("Создать", theme.ContentAddIcon(), func() {
-				if nameEntry.Text == "" {
-					dialog.ShowError(fmt.Errorf("Введите имя автора"), window)
+				if nameEntry.Text == "" || addressEntry.Text == "" {
+					dialog.ShowError(fmt.Errorf("необходимо заполнить все поля"), window)
 					return
 				}
 
-				author, err := handlers.CreateAuthor(db, nameEntry.Text)
+				organization, err := handlers.CreateOrganization(db, nameEntry.Text, addressEntry.Text)
 				if err != nil {
-					dialog.ShowError(fmt.Errorf("Ошибка при создании автора: %v", err), window)
+					dialog.ShowError(fmt.Errorf("ошибка при создании организации: %v", err), window)
 					return
 				}
 
-				dialog.ShowInformation("Успешно", fmt.Sprintf("Автор '%s' успешно добавлен", author.Name), window)
+				dialog.ShowInformation("Успешно", fmt.Sprintf("Организация '%s' успешно добавлена", organization.Name), window)
 				nameEntry.SetText("")
+				addressEntry.SetText("")
 			}),
 		),
 	)
-	createAuthorCard.SetContent(createAuthorContent)
+	createCard.SetContent(createContent)
+
+	nameForDeleteEntry := widget.NewEntry()
+	nameForDeleteEntry.SetPlaceHolder("Введите название организации для удаления")
+
+	deleteCard := widget.NewCard("Удалить организацию", "", nil)
+	deleteContent := container.NewVBox(
+		widget.NewLabel("Название организации:"),
+		nameForDeleteEntry,
+		container.NewHBox(
+			layout.NewSpacer(),
+			widget.NewButtonWithIcon("Удалить", theme.DeleteIcon(), func() {
+				if nameForDeleteEntry.Text == "" {
+					dialog.ShowError(fmt.Errorf("введите название организации"), window)
+					return
+				}
+
+				confirmDialog := dialog.NewConfirm(
+					"Подтверждение удаления",
+					fmt.Sprintf("Вы уверены, что хотите удалить организацию '%s'?", nameForDeleteEntry.Text),
+					func(ok bool) {
+						if ok {
+							err := handlers.DeleteOrganization(db, nameForDeleteEntry.Text)
+							if err != nil {
+								dialog.ShowError(fmt.Errorf("ошибка при удалении организации: %v", err), window)
+								return
+							}
+
+							dialog.ShowInformation("Успешно", "Организация успешно удалена", window)
+							nameForDeleteEntry.SetText("")
+						}
+					},
+					window,
+				)
+				confirmDialog.Show()
+			}),
+		),
+	)
+	deleteCard.SetContent(deleteContent)
+
+	viewAllOrganizationsCard := widget.NewCard("Просмотр всех организаций", "", nil)
+	organizationsList := widget.NewList(
+		func() int { return 0 },
+		func() fyne.CanvasObject {
+			return widget.NewLabel("Название организации - Адрес")
+		},
+		func(id widget.ListItemID, obj fyne.CanvasObject) {
+		},
+	)
+
+	scrollContainer := container.NewVScroll(organizationsList)
+	scrollContainer.SetMinSize(fyne.NewSize(400, 200))
+
+	viewAllOrganizationsContent := container.NewVBox(
+		container.NewHBox(
+			layout.NewSpacer(),
+			widget.NewButtonWithIcon("Загрузить все организации", theme.ViewRefreshIcon(), func() {
+				organizations, err := handlers.GetAllOrganizations(db)
+				if err != nil {
+					dialog.ShowError(fmt.Errorf("ошибка при получении организаций: %v", err), window)
+					return
+				}
+
+				localOrganizations := *organizations
+
+				organizationsList.Length = func() int { return len(*organizations) }
+				organizationsList.UpdateItem = func(id widget.ListItemID, obj fyne.CanvasObject) {
+					label := obj.(*widget.Label)
+					label.SetText(fmt.Sprintf("%s - %s", localOrganizations[id].Name, localOrganizations[id].Address))
+				}
+				organizationsList.Refresh()
+			}),
+			layout.NewSpacer(),
+		),
+		scrollContainer,
+	)
+	viewAllOrganizationsCard.SetContent(viewAllOrganizationsContent)
 
 	return container.NewVBox(
 		heading,
-		container.NewPadded(createAuthorCard),
+		container.NewPadded(
+			container.NewVBox(
+				createCard,
+				widget.NewSeparator(),
+				deleteCard,
+				widget.NewSeparator(),
+				viewAllOrganizationsCard,
+			),
+		),
 	)
 }
 
 func createSearchTab(window fyne.Window, db *gorm.DB) fyne.CanvasObject {
-	heading := canvas.NewText("Поиск книг", theme.PrimaryColor())
+	heading := canvas.NewText("Поиск", theme.PrimaryColor())
 	heading.TextSize = 24
 	heading.Alignment = fyne.TextAlignCenter
 
-	titleSearchEntry := widget.NewEntry()
-	titleSearchEntry.SetPlaceHolder("Введите название книги")
+	NameSearchEntry := widget.NewEntry()
+	NameSearchEntry.SetPlaceHolder("Введите имя студента")
 
-	authorSearchEntry := widget.NewEntry()
-	authorSearchEntry.SetPlaceHolder("Введите имя автора")
+	OrganizationSearchEntry := widget.NewEntry()
+	OrganizationSearchEntry.SetPlaceHolder("Введите название организации")
 
 	resultsCard := widget.NewCard("Результаты поиска", "", nil)
 
 	resultsList := widget.NewList(
 		func() int { return 0 },
 		func() fyne.CanvasObject {
-			return widget.NewLabel("Заголовок книги - Автор")
+			return widget.NewLabel("Результат поиска")
 		},
 		func(id widget.ListItemID, obj fyne.CanvasObject) {
 		},
@@ -238,90 +327,77 @@ func createSearchTab(window fyne.Window, db *gorm.DB) fyne.CanvasObject {
 	scrollContainer.SetMinSize(fyne.NewSize(400, 200))
 
 	resultsContent := container.NewVBox(
-		widget.NewLabel("Найденные книги:"),
+		widget.NewLabel("Найденные результаты:"),
 		scrollContainer,
 	)
 	resultsCard.SetContent(resultsContent)
 
-	updateSearchResults := func(books []interface{}) {
-		resultsList.Length = func() int { return len(books) }
+	updateSearchResults := func(items []string) {
+		resultsList.Length = func() int { return len(items) }
 		resultsList.UpdateItem = func(id widget.ListItemID, obj fyne.CanvasObject) {
 			label := obj.(*widget.Label)
-			book := books[id].(map[string]interface{})
-			label.SetText(fmt.Sprintf("%v - %v", book["Title"], book["Author"]))
+			label.SetText(items[id])
 		}
 		resultsList.Refresh()
 	}
 
-	searchByTitleCard := widget.NewCard("Поиск по названию", "", nil)
+	searchByTitleCard := widget.NewCard("Поиск студента по имени", "", nil)
 	searchByTitleContent := container.NewVBox(
-		titleSearchEntry,
+		NameSearchEntry,
 		container.NewHBox(
 			layout.NewSpacer(),
 			widget.NewButtonWithIcon("Найти", theme.SearchIcon(), func() {
-				if titleSearchEntry.Text == "" {
-					dialog.ShowError(fmt.Errorf("Введите название книги"), window)
+				if NameSearchEntry.Text == "" {
+					dialog.ShowError(fmt.Errorf("введите имя студента"), window)
 					return
 				}
 
-				books, err := handlers.GetBookByAuthor(db, authorSearchEntry.Text)
+				student, err := handlers.GetStudentByName(db, NameSearchEntry.Text)
 				if err != nil {
-					dialog.ShowError(fmt.Errorf("Ошибка при поиске книг: %v", err), window)
+					dialog.ShowError(fmt.Errorf("ошибка при поиске студента: %v", err), window)
 					return
 				}
 
-				if len(*books) == 0 {
-					dialog.ShowInformation("Результаты поиска", "Книги не найдены", window)
+				if student == nil {
+					dialog.ShowInformation("Результаты поиска", "Студент не найден", window)
 					return
 				}
 
-				var bookList []interface{}
-				for _, book := range *books {
-					bookMap := map[string]interface{}{
-						"Title":  book.Title,
-						"Author": book.Author,
-					}
-					bookList = append(bookList, bookMap)
-				}
+				var studentResults []string
+				studentResults = append(studentResults, fmt.Sprintf("Студент: %s - Группа: %s", (*student)[0].Full_name, (*student)[0].Group_name))
 
-				updateSearchResults(bookList)
+				updateSearchResults(studentResults)
 			}),
 		),
 	)
 	searchByTitleCard.SetContent(searchByTitleContent)
 
-	searchByAuthorCard := widget.NewCard("Поиск по автору", "", nil)
+	searchByAuthorCard := widget.NewCard("Поиск по названию организации", "", nil)
 	searchByAuthorContent := container.NewVBox(
-		authorSearchEntry,
+		OrganizationSearchEntry,
 		container.NewHBox(
 			layout.NewSpacer(),
 			widget.NewButtonWithIcon("Найти", theme.SearchIcon(), func() {
-				if authorSearchEntry.Text == "" {
-					dialog.ShowError(fmt.Errorf("Введите имя автора"), window)
+				if OrganizationSearchEntry.Text == "" {
+					dialog.ShowError(fmt.Errorf("введите название организации"), window)
 					return
 				}
 
-				books, err := handlers.GetBookByAuthor(db, authorSearchEntry.Text)
+				organization, err := handlers.GetOrganizationsByName(db, OrganizationSearchEntry.Text)
 				if err != nil {
-					dialog.ShowError(fmt.Errorf("Ошибка при поиске книг: %v", err), window)
+					dialog.ShowError(fmt.Errorf("ошибка при поиске организации: %v", err), window)
 					return
 				}
 
-				if len(*books) == 0 {
-					dialog.ShowInformation("Результаты поиска", "Книги не найдены", window)
+				if organization == nil {
+					dialog.ShowInformation("Результаты поиска", "Организация не найдена", window)
 					return
 				}
 
-				var bookList []interface{}
-				for _, book := range *books {
-					bookMap := map[string]interface{}{
-						"Title":  book.Title,
-						"Author": book.Author,
-					}
-					bookList = append(bookList, bookMap)
-				}
+				var organizationResults []string
+				organizationResults = append(organizationResults, fmt.Sprintf("Организация: %s - Адрес: %s", (*organization)[0].Name, (*organization)[0].Address))
 
-				updateSearchResults(bookList)
+				updateSearchResults(organizationResults)
 			}),
 		),
 	)
